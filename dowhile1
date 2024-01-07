@@ -1,0 +1,90 @@
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+public class RequestParser {
+
+    private Set<String> validAuthTokens;
+
+    public RequestParser(String[] validAuthTokens) {
+        this.validAuthTokens = new HashSet<>(Arrays.asList(validAuthTokens));
+    }
+
+    public boolean validateRequest(String[] requestTokens) {
+        if (requestTokens.length < 2) {
+            // Invalid request format
+            return false;
+        }
+
+        String authToken = getRequestAuthToken(requestTokens);
+        if (!isValidAuthToken(authToken)) {
+            // Invalid authentication token
+            return false;
+        }
+
+        if (isPostRequest(requestTokens) && !isValidCSRFToken(getCSRFToken(requestTokens))) {
+            // Invalid CSRF token for POST request
+            return false;
+        }
+
+        // Request is valid, proceed with parsing URL parameters
+        parseURLParameters(requestTokens);
+
+        return true;
+    }
+
+    private String getRequestAuthToken(String[] requestTokens) {
+        for (String token : requestTokens) {
+            if (token.startsWith("token=")) {
+                return token.substring(6);
+            }
+        }
+        return null;
+    }
+
+    private boolean isValidAuthToken(String authToken) {
+        return authToken != null && validAuthTokens.contains(authToken);
+    }
+
+    private boolean isPostRequest(String[] requestTokens) {
+        return Arrays.asList(requestTokens).contains("POST");
+    }
+
+    private String getCSRFToken(String[] requestTokens) {
+        for (String token : requestTokens) {
+            if (token.startsWith("csrf_token=")) {
+                return token.substring(11);
+            }
+        }
+        return null;
+    }
+
+    private boolean isValidCSRFToken(String csrfToken) {
+        return csrfToken != null && csrfToken.matches("^[a-z0-9]{8,}$");
+    }
+
+    private void parseURLParameters(String[] requestTokens) {
+        for (String token : requestTokens) {
+            if (token.contains("?")) {
+                String parameters = token.split("\\?")[1];
+                String[] keyValuePairs = parameters.split("&");
+                // Process key-value pairs as needed
+                System.out.println(Arrays.toString(keyValuePairs));
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        // Example usage
+        String[] validAuthTokens = {"token123", "token456"};
+        RequestParser parser = new RequestParser(validAuthTokens);
+
+        // Example GET request
+        String[] getRequestTokens = {"GET", "token=token123", "param1=value1&param2=value2"};
+        parser.validateRequest(getRequestTokens);
+
+        // Example POST request
+        String[] postRequestTokens = {"POST", "token=token456", "csrf_token=abc123", "param1=value1&param2=value2"};
+        parser.validateRequest(postRequestTokens);
+    }
+}
